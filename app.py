@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 
 # dataset
-url_dataset = "series_data.csv"
+url_dataset = "series_data_clean.csv"
 
 try:
     datos = pd.read_csv(url_dataset)
@@ -432,7 +432,9 @@ with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
 
         gr.Markdown("### Resultados de la Operación")
         out_mensaje_crud = gr.Textbox(label="Estado del Sistema", interactive=False)
-        out_tabla_crud = gr.Dataframe(label="Datos de la Serie")
+        out_tabla_crud = gr.Dataframe(
+    label="Datos de la Serie", datatype=["str", "img", "str", "str", "str", "str"]
+)
 
         btn_añadir.click(fn=wrapper_añadir, inputs=[in_titulo, in_genero, in_desc, in_val], outputs=[out_tabla_crud, out_mensaje_crud])
         btn_consultar.click(fn=wrapper_consultar, inputs=[in_busqueda, in_gen_buscar], outputs=[out_tabla_crud, out_mensaje_crud])
@@ -446,7 +448,9 @@ with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
             entrada_alpha = gr.Slider(minimum=0.0, maximum=1.0, value=0.9, step=0.05, label="Peso del contenido (alpha)")
             entrada_n = gr.Slider(minimum=3, maximum=20, value=5, step=1, label="Número de recomendaciones")
         boton_recomendar = gr.Button("Obtener Recomendaciones", variant="primary")
-        salida_tabla = gr.Dataframe(label="Series Recomendadas")
+        salida_tabla = gr.Dataframe(
+    label="Series Recomendadas", datatype=["str", "str", "img", "str", "str"]
+)
         boton_recomendar.click(fn=recomendar_ui, inputs=[entrada_titulo, entrada_alpha, entrada_n], outputs=salida_tabla)
 
     with gr.Tab("Valorar y Social"):
