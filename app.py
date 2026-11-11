@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 
 # dataset
-url_dataset = "drive/MyDrive/ABP/series_data.csv"
+url_dataset = "series_data.csv"
 
 try:
     datos = pd.read_csv(url_dataset)
