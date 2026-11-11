@@ -231,4 +231,366 @@ def guardar_valoracion(usuario, item, prediccion_num, origen="manual", texto="")
       df_valoraciones["serie"] == item
   )
   if filtro.any():
-    df_valoraciones.loc[filtro, ["valoracion", "origen
+    df_valoraciones.loc[filtro, ["valoracion", "origen", "comentario"]] = [
+        etiqueta_str,
+        origen,
+        texto,
+    ]
+    return (
+        df_valoraciones,
+        f"Éxito: Valoración ({origen}) actualizada para '{item}' ->"
+        f" {etiqueta_str}.",
+    )
+
+  nuevo_id = (
+      int(df_valoraciones["id_val"].max() + 1)
+      if not df_valoraciones.empty
+      else 1
+  )
+  nueva = pd.DataFrame([{
+      "id_val": nuevo_id,
+      "usuario": usuario,
+      "serie": item,
+      "valoracion": etiqueta_str,
+      "origen": origen,
+      "comentario": texto,
+  }])
+  df_valoraciones = pd.concat([df_valoraciones, nueva], ignore_index=True)
+  return (
+      df_valoraciones,
+      f"Éxito: Valoración ({origen}) guardada con ID {nuevo_id} ->"
+      f" {etiqueta_str}.",
+  )
+
+
+def consultar_valoraciones(usuario_filtro=""):
+  if not usuario_filtro or not str(usuario_filtro).strip():
+    return df_valoraciones
+  return df_valoraciones[
+      df_valoraciones["usuario"].str.contains(
+          str(usuario_filtro).strip(), case=False, na=False
+      )
+  ]
+
+
+def eliminar_valoracion(id_val):
+  global df_valoraciones
+  if id_val not in df_valoraciones["id_val"].values:
+    return df_valoraciones, f"Error: No existe la valoración con ID {id_val}."
+  df_valoraciones = df_valoraciones[
+      df_valoraciones["id_val"] != id_val
+  ].reset_index(drop=True)
+  return df_valoraciones, f"Éxito: Valoración con ID {id_val} eliminada."
+
+
+def valoracion_automatica(comentario):
+  vector = vectorizador_val.transform([str(comentario).lower().strip()])
+  return int(modelo_ganador.predict(vector)[0])
+
+
+# ==========================================
+# PROTOTIPO GRADIO
+# ==========================================
+import gradio as gr
+
+titulos_series = sorted(datos["titulo"].dropna().unique().tolist())
+
+
+def obtener_id(entrada):
+  if not entrada or str(entrada).strip() == "":
+    return None
+  if str(entrada).strip().isdigit():
+    return int(entrada)
+  coincidencias = datos[
+      datos["titulo"].str.contains(str(entrada), case=False, na=False)
+  ]
+  if not coincidencias.empty:
+    return int(coincidencias.iloc[0]["id_serie"])
+  return None
+
+
+def wrapper_añadir(titulo, genero, descripcion, valoracion):
+  global datos
+  datos, msj = añadir_serie(datos, titulo, genero, descripcion, valoracion)
+  return datos.tail(), msj
+
+
+def wrapper_consultar(entrada_busqueda, genero):
+  es_numero = str(entrada_busqueda).strip().isdigit()
+  id_val = int(entrada_busqueda) if es_numero else None
+  titulo_val = None if es_numero else entrada_busqueda
+  genero_val = genero if str(genero).strip() != "" else None
+  resultado = consultar_serie(
+      datos, id_serie=id_val, titulo=titulo_val, genero=genero_val
+  )
+  if isinstance(resultado, str):
+    return pd.DataFrame(), resultado
+  return resultado, "Consulta realizada con éxito."
+
+
+def wrapper_modificar(entrada_busqueda, columna, nuevo_valor):
+  global datos
+  id_serie = obtener_id(entrada_busqueda)
+  if id_serie is None:
+    return (
+        pd.DataFrame(),
+        f"Error: No se encontró la serie '{entrada_busqueda}'.",
+    )
+  if columna == "valoracion":
+    try:
+      nuevo_valor = float(nuevo_valor)
+    except ValueError:
+      pass
+  datos, msj = modificar_serie(datos, id_serie, columna, nuevo_valor)
+  return datos[datos["id_serie"] == id_serie], msj
+
+
+def wrapper_eliminar(entrada_busqueda):
+  global datos
+  id_serie = obtener_id(entrada_busqueda)
+  if id_serie is None:
+    return (
+        pd.DataFrame(),
+        f"Error: No se encontró la serie '{entrada_busqueda}'.",
+    )
+  datos, msj = eliminar_serie(datos, id_serie)
+  return datos.tail(), msj
+
+
+def recomendar_ui(titulo_seleccionado, alpha, n):
+  matriz = float(alpha) * distancia_texto + (
+      1.0 - float(alpha)
+  ) * distancia_sentimiento
+  return recomendar_por_matriz(titulo_seleccionado, matriz, int(n))
+
+
+def valorar_manual_ui(usuario, item, decision_str, comentario):
+  pred_num = 1 if decision_str == "Like" else 0
+  tabla, msj = guardar_valoracion(
+      usuario, item, pred_num, origen="manual", texto=comentario
+  )
+  return msj, tabla
+
+
+def valorar_automatica_ui(usuario, item, comentario):
+  if not comentario or not str(comentario).strip():
+    return (
+        "Error: Escribe una reseña o comentario para que el modelo SVM"
+        " prediga la valoración.",
+        consultar_valoraciones(),
+    )
+  prediccion = valoracion_automatica(comentario)
+  tabla, msj = guardar_valoracion(
+      usuario, item, prediccion, origen="automática", texto=comentario
+  )
+  return (
+      f"Predicción automática SVM: {ETIQUETA[prediccion]} | {msj}",
+      tabla,
+  )
+
+
+def filtrar_val_ui(usuario_filtro):
+  return consultar_valoraciones(usuario_filtro)
+
+
+def eliminar_val_ui(id_val):
+  tabla, msj = eliminar_valoracion(int(id_val))
+  return msj, tabla
+
+
+def wrapper_wishlist_simulada(titulo):
+  return f"(simulado) '{titulo}' se ha añadido a tu Wishlist correctamente."
+
+
+def wrapper_compatibilidad_simulada():
+  return (
+      "(simulado) Calculando afinidad con tus seguidores... ¡Tenéis un 85% de"
+      " compatibilidad!"
+  )
+
+
+with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
+  gr.Markdown("# 🎬 WatchWise - Prototipo Sprint 4")
+
+  with gr.Tab("Base de Datos (Catálogo)"):
+    gr.Markdown(
+        "Gestiona el catálogo de series. Las operaciones modifican la base de"
+        " datos en tiempo real."
+    )
+    with gr.Row():
+      with gr.Column(scale=1):
+        gr.Markdown("### Añadir Nueva Serie")
+        in_titulo = gr.Textbox(label="Título")
+        in_genero = gr.Textbox(label="Género")
+        in_desc = gr.Textbox(label="Descripción")
+        in_val = gr.Number(label="Valoración Inicial", value=0.0)
+        btn_añadir = gr.Button("Añadir Serie", variant="primary")
+      with gr.Column(scale=1):
+        gr.Markdown("### Consultar / Modificar / Eliminar")
+        in_busqueda = gr.Textbox(label="ID o Título de la Serie")
+        in_gen_buscar = gr.Textbox(label="O buscar por Género")
+        with gr.Row():
+          btn_consultar = gr.Button("Buscar")
+          btn_eliminar = gr.Button("Eliminar", variant="stop")
+        gr.Markdown("#### Modificar campo (requiere buscar la serie arriba)")
+        in_columna = gr.Dropdown(
+            choices=["titulo", "genero", "descripcion", "valoracion"],
+            label="Columna a modificar",
+        )
+        in_nuevo_valor = gr.Textbox(label="Nuevo Valor")
+        btn_modificar = gr.Button("Aplicar Modificación")
+
+    gr.Markdown("### Resultados de la Operación")
+    out_mensaje_crud = gr.Textbox(label="Estado del Sistema", interactive=False)
+    # CONFIGURADO CON "img" EN LA PRIMERA COLUMNA PARA RENDERIZAR PÓSTERS
+    out_tabla_crud = gr.Dataframe(
+        label="Datos de la Serie", datatype=["img", "str", "str", "str", "num"]
+    )
+
+    btn_añadir.click(
+        fn=wrapper_añadir,
+        inputs=[in_titulo, in_genero, in_desc, in_val],
+        outputs=[out_tabla_crud, out_mensaje_crud],
+    )
+    btn_consultar.click(
+        fn=wrapper_consultar,
+        inputs=[in_busqueda, in_gen_buscar],
+        outputs=[out_tabla_crud, out_mensaje_crud],
+    )
+    btn_modificar.click(
+        fn=wrapper_modificar,
+        inputs=[in_busqueda, in_columna, in_nuevo_valor],
+        outputs=[out_tabla_crud, out_mensaje_crud],
+    )
+    btn_eliminar.click(
+        fn=wrapper_eliminar,
+        inputs=[in_busqueda],
+        outputs=[out_tabla_crud, out_mensaje_crud],
+    )
+
+  with gr.Tab("Descubrir (Recomendaciones)"):
+    gr.Markdown(
+        "Combina similitud de contenido (TF-IDF) y sentimiento (VADER) sobre"
+        " las sinopsis."
+    )
+    with gr.Row():
+      entrada_titulo = gr.Dropdown(
+          choices=titulos_series,
+          value="Game of Thrones",
+          label="Serie que te gustó",
+      )
+      entrada_alpha = gr.Slider(
+          minimum=0.0,
+          maximum=1.0,
+          value=0.9,
+          step=0.05,
+          label="Peso del contenido (alpha)",
+      )
+      entrada_n = gr.Slider(
+          minimum=3,
+          maximum=20,
+          value=5,
+          step=1,
+          label="Número de recomendaciones",
+      )
+    boton_recomendar = gr.Button("Obtener Recomendaciones", variant="primary")
+    # CONFIGURADO CON "img" EN LA PRIMERA COLUMNA PARA PÓSTERS EN RECOMENDACIONES
+    salida_tabla = gr.Dataframe(
+        label="Series Recomendadas",
+        datatype=["img", "str", "str", "num", "num", "str"],
+    )
+    boton_recomendar.click(
+        fn=recomendar_ui,
+        inputs=[entrada_titulo, entrada_alpha, entrada_n],
+        outputs=salida_tabla,
+    )
+
+  with gr.Tab("Valorar y Social"):
+    gr.Markdown(
+        "Subsistema de Valoración de Ítems **[Nivel Real: Manual CRUD +"
+        " Automática SVM]** y Funciones Sociales **[Nivel Simulado]**."
+    )
+    with gr.Row():
+      with gr.Column(scale=1):
+        gr.Markdown("### Valorar Serie (Manual o Automática)")
+        social_usuario = gr.Textbox(label="Usuario", value="Ana")
+        social_titulo = gr.Dropdown(
+            choices=titulos_series,
+            value="Game of Thrones",
+            label="Selecciona una Serie",
+        )
+        social_decision = gr.Radio(
+            choices=["Like", "No Like"], value="Like", label="Valoración Manual"
+        )
+        social_comentario = gr.Textbox(
+            label=(
+                "Reseña / Comentario (en inglés para predicción automática"
+                " SVM)"
+            ),
+            lines=2,
+            placeholder="Ej: Great plot and amazing characters!",
+        )
+        with gr.Row():
+          btn_val_manual = gr.Button(
+              "Guardar Valoración Manual", variant="primary"
+          )
+          btn_val_auto = gr.Button("Predecir Valoración Automática (SVM)")
+      with gr.Column(scale=1):
+        gr.Markdown("### Gestión de Valoraciones (CRUD) y Red Social")
+        filtro_usr = gr.Textbox(
+            label="Filtrar por Usuario (dejar vacío para ver todas)"
+        )
+        btn_consultar_val = gr.Button("Consultar / Actualizar Tabla")
+        id_borrar_val = gr.Number(
+            label="ID de Valoración a eliminar", value=1, precision=0
+        )
+        btn_eliminar_val = gr.Button("Eliminar Valoración", variant="stop")
+        with gr.Row():
+          btn_wishlist = gr.Button("Añadir a Wishlist (simulado)")
+          btn_compatibilidad = gr.Button(
+              "Calcular Compatibilidad (simulado)"
+          )
+
+    out_mensaje_social = gr.Textbox(
+        label="Respuesta del Sistema", interactive=False
+    )
+    out_tabla_val = gr.Dataframe(
+        label="Base de Datos de Valoraciones", value=consultar_valoraciones()
+    )
+
+    btn_val_manual.click(
+        fn=valorar_manual_ui,
+        inputs=[
+            social_usuario,
+            social_titulo,
+            social_decision,
+            social_comentario,
+        ],
+        outputs=[out_mensaje_social, out_tabla_val],
+    )
+    btn_val_auto.click(
+        fn=valorar_automatica_ui,
+        inputs=[social_usuario, social_titulo, social_comentario],
+        outputs=[out_mensaje_social, out_tabla_val],
+    )
+    btn_consultar_val.click(
+        fn=filtrar_val_ui, inputs=[filtro_usr], outputs=out_tabla_val
+    )
+    btn_eliminar_val.click(
+        fn=eliminar_val_ui, inputs=[id_borrar_val], outputs=[out_mensaje_social, out_tabla_val]
+    )
+    btn_wishlist.click(
+        fn=wrapper_wishlist_simulada,
+        inputs=[social_titulo],
+        outputs=out_mensaje_social,
+    )
+    btn_compatibilidad.click(
+        fn=wrapper_compatibilidad_simulada, inputs=[], outputs=out_mensaje_social
+    )
+
+import os
+
+port = int(os.environ.get("PORT", 10000))
+app.launch(
+    server_name="0.0.0.0", server_port=port, theme=gr.themes.Soft(), share=False
+)
