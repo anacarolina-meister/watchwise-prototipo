@@ -9,20 +9,20 @@ Original file is located at
 # WatchWise - Sprint4: CRUD de Series | Grupo Neister
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-# dataset
+# dataset actualizado con el archivo limpio de pósters
 url_dataset = "series_data_clean.csv"
 
 try:
-    datos = pd.read_csv(url_dataset)
+  datos = pd.read_csv(url_dataset)
 
-    print("--- CARGA DE DATOS ---")
-    print(f"Total de ítems cargados: {len(datos)}")
-    print(f"Columnas del dataset: {list(datos.columns)}")
+  print("--- CARGA DE DATOS ---")
+  print(f"Total de ítems cargados: {len(datos)}")
+  print(f"Columnas del dataset: {list(datos.columns)}")
 except Exception as e:
-    print(f"Error crítico al cargar: {e}")
+  print(f"Error crítico al cargar: {e}")
 
 
 print("\n--- TRATAMIENTO DE DATOS ---")
@@ -32,202 +32,156 @@ print(f"Filas antes de la limpieza: {len(datos)}")
 datos = datos.drop_duplicates()
 
 # 2. Tratar nulos en la descripción (la columna real es 'Overview')
-datos['Overview'] = datos['Overview'].fillna('Sin descripción disponible')
+datos["Overview"] = datos["Overview"].fillna("Sin descripción disponible")
 
 # 3. Asegurar tipos de datos (la columna real es 'IMDB_Rating')
-datos['IMDB_Rating'] = datos['IMDB_Rating'].astype(float)
+datos["IMDB_Rating"] = datos["IMDB_Rating"].astype(float)
 
 print(f"Filas después de la limpieza: {len(datos)}")
 
+
 # ALTA (Create)
 def añadir_serie(df, titulo, genero, descripcion, valoracion):
-    # Error a probar: campo obligatorio vacío
-    if not titulo or not genero:
-        return df, "Error: El título y el género son obligatorios."
+  if not titulo or not genero:
+    return df, "Error: El título y el género son obligatorios."
 
-    # Evitar el error de len(datos) usando el max() + 1
-    nuevo_id = int(df['id_serie'].max() + 1) if not df.empty else 1
+  nuevo_id = int(df["id_serie"].max() + 1) if not df.empty else 1
 
-    nueva_fila = pd.DataFrame({
-        'id_serie': [nuevo_id],
-        'titulo': [titulo],
-        'genero': [genero],
-        'descripcion': [descripcion],
-        'valoracion': [valoracion]
-    })
-    return pd.concat([df, nueva_fila], ignore_index=True), f"Éxito: '{titulo}' añadida con ID {nuevo_id}."
+  nueva_fila = pd.DataFrame({
+      "id_serie": [nuevo_id],
+      "titulo": [titulo],
+      "genero": [genero],
+      "descripcion": [descripcion],
+      "valoracion": [valoracion],
+      "Poster_Link": [
+          "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500"
+      ],  # Imagen por defecto para altas nuevas
+  })
+  return pd.concat([df, nueva_fila], ignore_index=True), (
+      f"Éxito: '{titulo}' añadida con ID {nuevo_id}."
+  )
 
 
-# CONSULTA (Read) - Actualizada para incluir búsqueda por título
+# CONSULTA (Read)
 def consultar_serie(df, id_serie=None, genero=None, titulo=None):
-    if id_serie is not None:
-        resultado = df[df['id_serie'] == id_serie]
-        if resultado.empty:
-            return f"Error: No existe la serie con ID {id_serie}."
-        return resultado
-    elif titulo is not None and titulo.strip() != "":
-        # Busca coincidencias parciales sin distinguir mayúsculas/minúsculas
-        resultado = df[df['titulo'].str.contains(titulo, case=False, na=False)]
-        if resultado.empty:
-            return f"Error: No existe ninguna serie que contenga '{titulo}'."
-        return resultado
-    elif genero is not None and genero.strip() != "":
-        return df[df['genero'].str.contains(genero, case=False, na=False)]
+  if id_serie is not None:
+    resultado = df[df["id_serie"] == id_serie]
+    if resultado.empty:
+      return f"Error: No existe la serie con ID {id_serie}."
+    return resultado
+  elif titulo is not None and titulo.strip() != "":
+    resultado = df[df["titulo"].str.contains(titulo, case=False, na=False)]
+    if resultado.empty:
+      return f"Error: No existe ninguna serie que contenga '{titulo}'."
+    return resultado
+  elif genero is not None and genero.strip() != "":
+    return df[df["genero"].str.contains(genero, case=False, na=False)]
 
-    return "Error: Indica un ID, un título o un género."
+  return "Error: Indica un ID, un título o un género."
 
 
 # MODIFICACIÓN (Update)
 def modificar_serie(df, id_serie, columna, nuevo_valor):
-    # Error a probar: id inexistente
-    if id_serie not in df['id_serie'].values:
-        return df, f"Error: No se puede modificar. El ID {id_serie} no existe."
-    # Error a probar: columna inválida
-    if columna not in df.columns:
-        return df, f"Error: La columna '{columna}' no existe."
+  if id_serie not in df["id_serie"].values:
+    return df, f"Error: No se puede modificar. El ID {id_serie} no existe."
+  if columna not in df.columns:
+    return df, f"Error: La columna '{columna}' no existe."
 
-    # Usar .loc para evitar el SettingWithCopyWarning
-    df.loc[df['id_serie'] == id_serie, columna] = nuevo_valor
-    return df, f"Éxito: Serie {id_serie} actualizada ({columna} -> {nuevo_valor})."
+  df.loc[df["id_serie"] == id_serie, columna] = nuevo_valor
+  return df, f"Éxito: Serie {id_serie} actualizada ({columna} -> {nuevo_valor})."
 
 
 # BAJA (Delete)
 def eliminar_serie(df, id_serie):
-    # Error a probar: id inexistente
-    if id_serie not in df['id_serie'].values:
-        return df, f"Error: No se puede eliminar. El ID {id_serie} no existe."
+  if id_serie not in df["id_serie"].values:
+    return df, f"Error: No se puede eliminar. El ID {id_serie} no existe."
 
-    df = df[df['id_serie'] != id_serie]
-    # Requisito explícito: reset_index para evitar desalineaciones
-    df = df.reset_index(drop=True)
-    return df, f"Éxito: Serie con ID {id_serie} eliminada."
+  df = df[df["id_serie"] != id_serie]
+  df = df.reset_index(drop=True)
+  return df, f"Éxito: Serie con ID {id_serie} eliminada."
 
-# Antes de probar, debemos adaptar el dataset original para que tenga las columnas esperadas por las funciones CRUD
-if 'id_serie' not in datos.columns:
-    # Crear un ID secuencial para cada serie
-    datos['id_serie'] = datos.index + 1
 
-# Renombrar las columnas originales en inglés a los nombres en español requeridos
+if "id_serie" not in datos.columns:
+  datos["id_serie"] = datos.index + 1
+
 columnas_a_renombrar = {
-    'Series_Title': 'titulo',
-    'Genre': 'genero',
-    'Overview': 'descripcion',
-    'IMDB_Rating': 'valoracion'
+    "Series_Title": "titulo",
+    "Genre": "genero",
+    "Overview": "descripcion",
+    "IMDB_Rating": "valoracion",
 }
 
-# Renombrar solo las columnas que existan en el DataFrame
-datos = datos.rename(columns={k: v for k, v in columnas_a_renombrar.items() if k in datos.columns})
+datos = datos.rename(
+    columns={
+        k: v for k, v in columnas_a_renombrar.items() if k in datos.columns
+    }
+)
 
-print("--- 1. PRUEBAS DE ALTA ---")
-# Caso correcto
-datos, msj = añadir_serie(datos, "The Office", "Comedia", "Documental falso", 9.0)
-print(msj)
-# Caso de error
-_, msj_err = añadir_serie(datos, "", "Comedia", "Sin título", 0)
-print(msj_err)
-
-print("\n--- 2. PRUEBAS DE CONSULTA ---")
-# Caso correcto
-print(consultar_serie(datos, id_serie=1))
-# Caso de error
-print(consultar_serie(datos, id_serie=999999))
-
-print("\n--- 3. PRUEBAS DE MODIFICACIÓN ---")
-# Caso correcto
-datos, msj = modificar_serie(datos, 1, 'valoracion', 9.9)
-print(msj)
-# Caso de error
-datos, msj_err = modificar_serie(datos, 999999, 'valoracion', 10)
-print(msj_err)
-
-print("\n--- 4. PRUEBAS DE BAJA ---")
-# Caso correcto
-datos, msj = eliminar_serie(datos, 2)
-print(msj)
-print("Comprobación visual de que no está la serie 2:")
-print(datos[['id_serie', 'titulo']].head())
-# Caso de error
-datos, msj_err = eliminar_serie(datos, 999999)
-print(msj_err)
 
 # ==========================================
-# SPRINT 4 - BLOQUE 1: TRES TÉCNICAS DE RECOMENDACIÓN Y COMPARACIÓN (TALLERES 1, 2 Y 3)
+# SPRINT 4 - BLOQUE 1: TRES TÉCNICAS DE RECOMENDACIÓN Y COMPARACIÓN
 # ==========================================
 import nltk
+
 nltk.download("vader_lexicon", quiet=True)
 from nltk.sentiment import SentimentIntensityAnalyzer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import pairwise_distances
-import pandas as pd
-import numpy as np
 
-# Limpieza de seguridad de la descripción
-datos['descripcion'] = datos['descripcion'].fillna("")
+datos["descripcion"] = datos["descripcion"].fillna("")
 
-# 1. TÉCNICA 1: CONTENIDO (Taller 1 - TF-IDF + Matriz de Distancias Coseno)
-tfidf = TfidfVectorizer(stop_words='english')
-matriz_tfidf = tfidf.fit_transform(datos['descripcion'])
+# 1. TÉCNICA 1: CONTENIDO (TF-IDF)
+tfidf = TfidfVectorizer(stop_words="english")
+matriz_tfidf = tfidf.fit_transform(datos["descripcion"])
 distancia_texto = pairwise_distances(matriz_tfidf, metric="cosine")
 
-# 2. TÉCNICA 2: SENTIMIENTO (Taller 2 - VADER compound en [-1, 1] + Distancia Euclídea normalizada a [0, 1])
+# 2. TÉCNICA 2: SENTIMIENTO (VADER)
 sia = SentimentIntensityAnalyzer()
-datos["sentimiento"] = datos["descripcion"].apply(lambda t: sia.polarity_scores(str(t))["compound"])
-distancia_sentimiento = pairwise_distances(datos[["sentimiento"]].values, metric="euclidean")
+datos["sentimiento"] = datos["descripcion"].apply(
+    lambda t: sia.polarity_scores(str(t))["compound"]
+)
+distancia_sentimiento = pairwise_distances(
+    datos[["sentimiento"]].values, metric="euclidean"
+)
 distancia_sentimiento /= distancia_sentimiento.max()
 
-# 3. TÉCNICA 3: VISIÓN ARTIFICIAL (Taller 3 - Descarte justificado técnicamente)
-# Nota metodológica: Las URLs de 'Poster_Link' en el dataset son miniaturas de baja resolución (67x98 px)
-# y enlaces rotos, y el póster promocional no representa la trama de la serie. Se descarta razonadamente.
-
-# 4. COMBINACIÓN DE MATRICES (alpha = 0.9 para que el contenido mande y el sentimiento desempate)
+# 3. COMBINACIÓN DE MATRICES (alpha = 0.9)
 alpha_elegido = 0.9
-distancia_combinada = alpha_elegido * distancia_texto + (1.0 - alpha_elegido) * distancia_sentimiento
+distancia_combinada = (
+    alpha_elegido * distancia_texto
+    + (1.0 - alpha_elegido) * distancia_sentimiento
+)
 
-print(f"Comprobación de dimensiones de las matrices: Texto {distancia_texto.shape} | Sentimiento {distancia_sentimiento.shape} | Combinada {distancia_combinada.shape}")
 
-# Función recomendadora unificada sobre matriz de distancias
 def recomendar_por_matriz(titulo_buscado, matriz_dist, n=5):
-    if titulo_buscado not in datos['titulo'].values:
-        return pd.DataFrame({"Mensaje": [f"No se encontró '{titulo_buscado}' en el catálogo."]})
-    idx = datos[datos['titulo'] == titulo_buscado].index[0]
-    orden = matriz_dist[idx].argsort()
-    indices_rec = [i for i in orden if i != idx][:int(n)]
-    return datos.iloc[indices_rec][['titulo', 'genero', 'sentimiento', 'valoracion', 'descripcion']]
+  if titulo_buscado not in datos["titulo"].values:
+    return pd.DataFrame(
+        {"Mensaje": [f"No se encontró '{titulo_buscado}' en el catálogo."]}
+    )
+  idx = datos[datos["titulo"] == titulo_buscado].index[0]
+  orden = matriz_dist[idx].argsort()
+  indices_rec = [i for i in orden if i != idx][: int(n)]
+  # INCLUIMOS 'Poster_Link' en primer lugar para la visualización tipo imagen
+  return datos.iloc[indices_rec][[
+      "Poster_Link",
+      "titulo",
+      "genero",
+      "sentimiento",
+      "valoracion",
+      "descripcion",
+  ]]
 
-# --- GENERACIÓN DE LA TABLA COMPARATIVA OBLIGATORIA (4 ÍTEMS CONOCIDOS) ---
-series_comparar = ["Game of Thrones", "Friends", "Stranger Things", "Sherlock"]
-filas_comp = []
-
-for s in series_comparar:
-    if s in datos['titulo'].values:
-        t_cont = ", ".join(recomendar_por_matriz(s, distancia_texto, 5)['titulo'].tolist())
-        t_sent = ", ".join(recomendar_por_matriz(s, distancia_sentimiento, 5)['titulo'].tolist())
-        t_comb = ", ".join(recomendar_por_matriz(s, distancia_combinada, 5)['titulo'].tolist())
-        filas_comp.append({
-            "Ítem de entrada": s,
-            "Solo contenido (top-5)": t_cont,
-            "Solo sentimiento (top-5)": t_sent,
-            "Solo imagen (top-5)": "No aplicable (miniaturas 67x98px sin valor semántico)",
-            "Combinación alpha=0.9 (top-5)": t_comb
-        })
-
-df_comparacion_tecnicas = pd.DataFrame(filas_comp)
-print("\n--- TABLA COMPARATIVA DE LAS TÉCNICAS DE RECOMENDACIÓN ---")
-print(df_comparacion_tecnicas)
 
 # ==========================================
-# SPRINT 4 - BLOQUE 2: SISTEMA DE VALORACIÓN DE ÍTEMS MANUAL Y AUTOMÁTICA (TALLER 4)
+# SPRINT 4 - BLOQUE 2: VALORACIÓN DE ÍTEMS (SVM)
 # ==========================================
-import nltk
 nltk.download("movie_reviews", quiet=True)
 from nltk.corpus import movie_reviews
-from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import svm
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
 
-# 1. CARGA Y ETIQUETADO DEL DATASET (pos -> Like (1), neg -> No Like (0))
 datos_reviews = [
     (" ".join(movie_reviews.words(fileid)), categoria)
     for categoria in movie_reviews.categories()
@@ -236,258 +190,45 @@ datos_reviews = [
 df_reviews = pd.DataFrame(datos_reviews, columns=["texto", "categoria"])
 df_reviews["valoracion"] = (df_reviews["categoria"] == "pos").astype(int)
 
-print("--- 1. BALANCE DE CLASES (1 = Like, 0 = No Like) ---")
-print(df_reviews["valoracion"].value_counts())
-
-# 2. PARTICIÓN 60 / 20 / 20 CON STRATIFY (en dos pasos)
 X_train, X_resto, y_train, y_resto = train_test_split(
-    df_reviews["texto"], df_reviews["valoracion"], test_size=0.4,
-    stratify=df_reviews["valoracion"], random_state=42
+    df_reviews["texto"],
+    df_reviews["valoracion"],
+    test_size=0.4,
+    stratify=df_reviews["valoracion"],
+    random_state=42,
 )
 X_val, X_test, y_val, y_test = train_test_split(
-    X_resto, y_resto, test_size=0.5,
-    stratify=y_resto, random_state=42
+    X_resto, y_resto, test_size=0.5, stratify=y_resto, random_state=42
 )
-print(f"\nTamaños de partición -> Train: {len(X_train)} | Validation: {len(X_val)} | Test: {len(X_test)}")
 
-# 3. VECTORIZACIÓN TF-IDF SIN FUGA DE DATOS (fit SOLO sobre train)
-vectorizador_val = TfidfVectorizer(stop_words='english', max_features=10000)
+vectorizador_val = TfidfVectorizer(stop_words="english", max_features=10000)
 vectorizador_val.fit(X_train)
 
 X_train_tfidf = vectorizador_val.transform(X_train)
-X_val_tfidf   = vectorizador_val.transform(X_val)   # solo transform
-X_test_tfidf  = vectorizador_val.transform(X_test)  # solo transform
+X_val_tfidf = vectorizador_val.transform(X_val)
+X_test_tfidf = vectorizador_val.transform(X_test)
 
-# 4. ENTRENAR Y COMPARAR DOS CLASIFICADORES SOBRE VALIDATION (SVM lineal vs k-NN)
 modelo_svm = svm.SVC(kernel="linear").fit(X_train_tfidf, y_train)
-modelo_knn = KNeighborsClassifier(n_neighbors=5).fit(X_train_tfidf, y_train)
-
-print("\n--- 2. COMPARATIVA EN VALIDATION: SVM LINEAL ---")
-print(classification_report(y_val, modelo_svm.predict(X_val_tfidf), target_names=["No Like (0)", "Like (1)"]))
-
-print("\n--- 3. COMPARATIVA EN VALIDATION: k-NN (k=5) ---")
-print(classification_report(y_val, modelo_knn.predict(X_val_tfidf), target_names=["No Like (0)", "Like (1)"]))
-
-# 5. EVALUACIÓN FINAL ÚNICA EN TEST CON EL MODELO GANADOR (SVM LINEAL)
 modelo_ganador = modelo_svm
-print("\n=== 4. EVALUACIÓN FINAL ÚNICA EN TEST (MODELO ELEGIDO: SVM LINEAL) ===")
-print(classification_report(y_test, modelo_ganador.predict(X_test_tfidf), target_names=["No Like (0)", "Like (1)"]))
 
-# 6. CRUD DE VALORACIONES (MANUAL Y AUTOMÁTICA UNIFICADAS)
 ETIQUETA = {1: "Like (1)", 0: "No Like (0)"}
-df_valoraciones = pd.DataFrame(columns=["id_val", "usuario", "serie", "valoracion", "origen", "comentario"])
+df_valoraciones = pd.DataFrame(
+    columns=["id_val", "usuario", "serie", "valoracion", "origen", "comentario"]
+)
+
 
 def guardar_valoracion(usuario, item, prediccion_num, origen="manual", texto=""):
-    global df_valoraciones
-    if not usuario or not str(usuario).strip() or not item:
-        return df_valoraciones, "Error: El nombre de usuario y la serie son obligatorios."
-    usuario = str(usuario).strip()
-    etiqueta_str = ETIQUETA[int(prediccion_num)]
+  global df_valoraciones
+  if not usuario or not str(usuario).strip() or not item:
+    return (
+        df_valoraciones,
+        "Error: El nombre de usuario y la serie son obligatorios.",
+    )
+  usuario = str(usuario).strip()
+  etiqueta_str = ETIQUETA[int(prediccion_num)]
 
-    # Controlar una única valoración por usuario e ítem (si ya existe, se actualiza/modifica)
-    filtro = (df_valoraciones["usuario"].str.lower() == usuario.lower()) & (df_valoraciones["serie"] == item)
-    if filtro.any():
-        df_valoraciones.loc[filtro, ["valoracion", "origen", "comentario"]] = [etiqueta_str, origen, texto]
-        return df_valoraciones, f"Éxito: Valoración ({origen}) actualizada para '{item}' -> {etiqueta_str}."
-
-    nuevo_id = int(df_valoraciones["id_val"].max() + 1) if not df_valoraciones.empty else 1
-    nueva = pd.DataFrame([{
-        "id_val": nuevo_id, "usuario": usuario, "serie": item,
-        "valoracion": etiqueta_str, "origen": origen, "comentario": texto
-    }])
-    df_valoraciones = pd.concat([df_valoraciones, nueva], ignore_index=True)
-    return df_valoraciones, f"Éxito: Valoración ({origen}) guardada con ID {nuevo_id} -> {etiqueta_str}."
-
-def consultar_valoraciones(usuario_filtro=""):
-    if not usuario_filtro or not str(usuario_filtro).strip():
-        return df_valoraciones
-    return df_valoraciones[df_valoraciones["usuario"].str.contains(str(usuario_filtro).strip(), case=False, na=False)]
-
-def eliminar_valoracion(id_val):
-    global df_valoraciones
-    if id_val not in df_valoraciones["id_val"].values:
-        return df_valoraciones, f"Error: No existe la valoración con ID {id_val}."
-    df_valoraciones = df_valoraciones[df_valoraciones["id_val"] != id_val].reset_index(drop=True)
-    return df_valoraciones, f"Éxito: Valoración con ID {id_val} eliminada."
-
-def valoracion_automatica(comentario):
-    # Usa transform, NUNCA fit
-    vector = vectorizador_val.transform([str(comentario).lower().strip()])
-    return int(modelo_ganador.predict(vector)[0])
-
-# Pruebas del CRUD de valoración (Manual y Automática)
-print("\n--- 5. PRUEBAS DEL CRUD DE VALORACIONES ---")
-_, m1 = guardar_valoracion("Ana", "Game of Thrones", 1, origen="manual", texto="Mi serie favorita")
-pred_p = valoracion_automatica("A boring and terrible show, awful script and bad acting.")
-_, m2 = guardar_valoracion("Paula", "Friends", pred_p, origen="automática", texto="A boring and terrible show, awful script and bad acting.")
-print(m1)
-print(m2)
-#display(consultar_valoraciones())
-
-# ==========================================
-# SPRINT 4 - PROTOTIPO GRADIO (VERSIÓN FINAL ACTUALIZADA)
-# ==========================================
-import gradio as gr
-import pandas as pd
-
-titulos_series = sorted(datos['titulo'].dropna().unique().tolist())
-
-# Función auxiliar para Modificar y Eliminar Series (Pestaña 1)
-def obtener_id(entrada):
-    if not entrada or str(entrada).strip() == "": return None
-    if str(entrada).strip().isdigit(): return int(entrada)
-    coincidencias = datos[datos['titulo'].str.contains(str(entrada), case=False, na=False)]
-    if not coincidencias.empty: return int(coincidencias.iloc[0]['id_serie'])
-    return None
-
-# 1. WRAPPERS PARA LA PESTAÑA 1 (CRUD DE SERIES)
-def wrapper_añadir(titulo, genero, descripcion, valoracion):
-    global datos
-    datos, msj = añadir_serie(datos, titulo, genero, descripcion, valoracion)
-    return datos.tail(), msj
-
-def wrapper_consultar(entrada_busqueda, genero):
-    es_numero = str(entrada_busqueda).strip().isdigit()
-    id_val = int(entrada_busqueda) if es_numero else None
-    titulo_val = None if es_numero else entrada_busqueda
-    genero_val = genero if str(genero).strip() != "" else None
-    resultado = consultar_serie(datos, id_serie=id_val, titulo=titulo_val, genero=genero_val)
-    if isinstance(resultado, str):
-        return pd.DataFrame(), resultado
-    return resultado, "Consulta realizada con éxito."
-
-def wrapper_modificar(entrada_busqueda, columna, nuevo_valor):
-    global datos
-    id_serie = obtener_id(entrada_busqueda)
-    if id_serie is None: return pd.DataFrame(), f"Error: No se encontró la serie '{entrada_busqueda}'."
-    if columna == 'valoracion':
-        try: nuevo_valor = float(nuevo_valor)
-        except ValueError: pass
-    datos, msj = modificar_serie(datos, id_serie, columna, nuevo_valor)
-    return datos[datos['id_serie'] == id_serie], msj
-
-def wrapper_eliminar(entrada_busqueda):
-    global datos
-    id_serie = obtener_id(entrada_busqueda)
-    if id_serie is None: return pd.DataFrame(), f"Error: No se encontró la serie '{entrada_busqueda}'."
-    datos, msj = eliminar_serie(datos, id_serie)
-    return datos.tail(), msj
-
-# 2. WRAPPER PARA LA PESTAÑA 2: RECOMENDADOR HÍBRIDO (CONTENIDO + SENTIMIENTO)
-def recomendar_ui(titulo_seleccionado, alpha, n):
-    matriz = float(alpha) * distancia_texto + (1.0 - float(alpha)) * distancia_sentimiento
-    return recomendar_por_matriz(titulo_seleccionado, matriz, int(n))
-
-# 3. WRAPPERS PARA LA PESTAÑA 3: VALORACIÓN REAL (MANUAL Y AUTOMÁTICA) + SOCIAL SIMULADO
-def valorar_manual_ui(usuario, item, decision_str, comentario):
-    pred_num = 1 if decision_str == "Like" else 0
-    tabla, msj = guardar_valoracion(usuario, item, pred_num, origen="manual", texto=comentario)
-    return msj, tabla
-
-def valorar_automatica_ui(usuario, item, comentario):
-    if not comentario or not str(comentario).strip():
-        return "Error: Escribe una reseña o comentario para que el modelo SVM prediga la valoración.", consultar_valoraciones()
-    prediccion = valoracion_automatica(comentario)
-    tabla, msj = guardar_valoracion(usuario, item, prediccion, origen="automática", texto=comentario)
-    return f"Predicción automática SVM: {ETIQUETA[prediccion]} | {msj}", tabla
-
-def filtrar_val_ui(usuario_filtro):
-    return consultar_valoraciones(usuario_filtro)
-
-def eliminar_val_ui(id_val):
-    tabla, msj = eliminar_valoracion(int(id_val))
-    return msj, tabla
-
-def wrapper_wishlist_simulada(titulo):
-    return f"(simulado) '{titulo}' se ha añadido a tu Wishlist correctamente."
-
-def wrapper_compatibilidad_simulada():
-    return "(simulado) Calculando afinidad con tus seguidores... ¡Tenéis un 85% de compatibilidad!"
-
-# CONSTRUCCIÓN DE LA INTERFAZ VISUAL
-with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
-    gr.Markdown("# 🎬 WatchWise - Prototipo Sprint 4")
-
-    with gr.Tab("Base de Datos (Catálogo)"):
-        gr.Markdown("Gestiona el catálogo de series. Las operaciones modifican la base de datos en tiempo real.")
-        with gr.Row():
-            with gr.Column(scale=1):
-                gr.Markdown("### Añadir Nueva Serie")
-                in_titulo = gr.Textbox(label="Título")
-                in_genero = gr.Textbox(label="Género")
-                in_desc = gr.Textbox(label="Descripción")
-                in_val = gr.Number(label="Valoración Inicial", value=0.0)
-                btn_añadir = gr.Button("Añadir Serie", variant="primary")
-            with gr.Column(scale=1):
-                gr.Markdown("### Consultar / Modificar / Eliminar")
-                in_busqueda = gr.Textbox(label="ID o Título de la Serie")
-                in_gen_buscar = gr.Textbox(label="O buscar por Género")
-                with gr.Row():
-                    btn_consultar = gr.Button("Buscar")
-                    btn_eliminar = gr.Button("Eliminar", variant="stop")
-                gr.Markdown("#### Modificar campo (requiere buscar la serie arriba)")
-                in_columna = gr.Dropdown(choices=['titulo', 'genero', 'descripcion', 'valoracion'], label="Columna a modificar")
-                in_nuevo_valor = gr.Textbox(label="Nuevo Valor")
-                btn_modificar = gr.Button("Aplicar Modificación")
-
-        gr.Markdown("### Resultados de la Operación")
-        out_mensaje_crud = gr.Textbox(label="Estado del Sistema", interactive=False)
-        out_tabla_crud = gr.Dataframe(
-    label="Datos de la Serie", datatype=["str", "img", "str", "str", "str", "str"]
-)
-
-        btn_añadir.click(fn=wrapper_añadir, inputs=[in_titulo, in_genero, in_desc, in_val], outputs=[out_tabla_crud, out_mensaje_crud])
-        btn_consultar.click(fn=wrapper_consultar, inputs=[in_busqueda, in_gen_buscar], outputs=[out_tabla_crud, out_mensaje_crud])
-        btn_modificar.click(fn=wrapper_modificar, inputs=[in_busqueda, in_columna, in_nuevo_valor], outputs=[out_tabla_crud, out_mensaje_crud])
-        btn_eliminar.click(fn=wrapper_eliminar, inputs=[in_busqueda], outputs=[out_tabla_crud, out_mensaje_crud])
-
-    with gr.Tab("Descubrir (Recomendaciones)"):
-        gr.Markdown("Combina similitud de contenido (TF-IDF) y sentimiento (VADER) sobre las sinopsis.")
-        with gr.Row():
-            entrada_titulo = gr.Dropdown(choices=titulos_series, value="Game of Thrones", label="Serie que te gustó")
-            entrada_alpha = gr.Slider(minimum=0.0, maximum=1.0, value=0.9, step=0.05, label="Peso del contenido (alpha)")
-            entrada_n = gr.Slider(minimum=3, maximum=20, value=5, step=1, label="Número de recomendaciones")
-        boton_recomendar = gr.Button("Obtener Recomendaciones", variant="primary")
-        salida_tabla = gr.Dataframe(
-    label="Series Recomendadas", datatype=["str", "str", "img", "str", "str"]
-)
-        boton_recomendar.click(fn=recomendar_ui, inputs=[entrada_titulo, entrada_alpha, entrada_n], outputs=salida_tabla)
-
-    with gr.Tab("Valorar y Social"):
-        gr.Markdown("Subsistema de Valoración de Ítems **[Nivel Real: Manual CRUD + Automática SVM]** y Funciones Sociales **[Nivel Simulado]**.")
-        with gr.Row():
-            with gr.Column(scale=1):
-                gr.Markdown("### Valorar Serie (Manual o Automática)")
-                social_usuario = gr.Textbox(label="Usuario", value="Ana")
-                social_titulo = gr.Dropdown(choices=titulos_series, value="Game of Thrones", label="Selecciona una Serie")
-                social_decision = gr.Radio(choices=["Like", "No Like"], value="Like", label="Valoración Manual")
-                social_comentario = gr.Textbox(label="Reseña / Comentario (en inglés para predicción automática SVM)", lines=2, placeholder="Ej: Great plot and amazing characters!")
-                with gr.Row():
-                    btn_val_manual = gr.Button("Guardar Valoración Manual", variant="primary")
-                    btn_val_auto = gr.Button("Predecir Valoración Automática (SVM)")
-            with gr.Column(scale=1):
-                gr.Markdown("### Gestión de Valoraciones (CRUD) y Red Social")
-                filtro_usr = gr.Textbox(label="Filtrar por Usuario (dejar vacío para ver todas)")
-                btn_consultar_val = gr.Button("Consultar / Actualizar Tabla")
-                id_borrar_val = gr.Number(label="ID de Valoración a eliminar", value=1, precision=0)
-                btn_eliminar_val = gr.Button("Eliminar Valoración", variant="stop")
-                with gr.Row():
-                    btn_wishlist = gr.Button("Añadir a Wishlist (simulado)")
-                    btn_compatibilidad = gr.Button("Calcular Compatibilidad (simulado)")
-
-        out_mensaje_social = gr.Textbox(label="Respuesta del Sistema", interactive=False)
-        out_tabla_val = gr.Dataframe(label="Base de Datos de Valoraciones", value=consultar_valoraciones())
-
-        btn_val_manual.click(fn=valorar_manual_ui, inputs=[social_usuario, social_titulo, social_decision, social_comentario], outputs=[out_mensaje_social, out_tabla_val])
-        btn_val_auto.click(fn=valorar_automatica_ui, inputs=[social_usuario, social_titulo, social_comentario], outputs=[out_mensaje_social, out_tabla_val])
-        btn_consultar_val.click(fn=filtrar_val_ui, inputs=[filtro_usr], outputs=out_tabla_val)
-        btn_eliminar_val.click(fn=eliminar_val_ui, inputs=[id_borrar_val], outputs=[out_mensaje_social, out_tabla_val])
-        btn_wishlist.click(fn=wrapper_wishlist_simulada, inputs=[social_titulo], outputs=out_mensaje_social)
-        btn_compatibilidad.click(fn=wrapper_compatibilidad_simulada, inputs=[], outputs=out_mensaje_social)
-
-import os
-# Configuración del puerto para Render
-port = int(os.environ.get("PORT", 10000))
-app.launch(
-    server_name="0.0.0.0", server_port=port, theme=gr.themes.Soft(), share=False
-)
+  filtro = (df_valoraciones["usuario"].str.lower() == usuario.lower()) & (
+      df_valoraciones["serie"] == item
+  )
+  if filtro.any():
+    df_valoraciones.loc[filtro, ["valoracion", "origen
