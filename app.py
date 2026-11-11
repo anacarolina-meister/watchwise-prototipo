@@ -24,8 +24,6 @@ try:
 except Exception as e:
     print(f"Error crítico al cargar: {e}")
 
-from google.colab import drive
-drive.mount('/content/drive')
 
 print("\n--- TRATAMIENTO DE DATOS ---")
 print(f"Filas antes de la limpieza: {len(datos)}")
