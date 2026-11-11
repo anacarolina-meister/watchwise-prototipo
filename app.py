@@ -213,7 +213,7 @@ for s in series_comparar:
 
 df_comparacion_tecnicas = pd.DataFrame(filas_comp)
 print("\n--- TABLA COMPARATIVA DE LAS TÉCNICAS DE RECOMENDACIÓN ---")
-display(df_comparacion_tecnicas)
+print(df_comparacion_tecnicas)
 
 # ==========================================
 # SPRINT 4 - BLOQUE 2: SISTEMA DE VALORACIÓN DE ÍTEMS MANUAL Y AUTOMÁTICA (TALLER 4)
@@ -322,7 +322,7 @@ pred_p = valoracion_automatica("A boring and terrible show, awful script and bad
 _, m2 = guardar_valoracion("Paula", "Friends", pred_p, origen="automática", texto="A boring and terrible show, awful script and bad acting.")
 print(m1)
 print(m2)
-display(consultar_valoraciones())
+#display(consultar_valoraciones())
 
 # ==========================================
 # SPRINT 4 - PROTOTIPO GRADIO (VERSIÓN FINAL ACTUALIZADA)
