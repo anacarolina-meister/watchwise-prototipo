@@ -481,4 +481,9 @@ with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
         btn_wishlist.click(fn=wrapper_wishlist_simulada, inputs=[social_titulo], outputs=out_mensaje_social)
         btn_compatibilidad.click(fn=wrapper_compatibilidad_simulada, inputs=[], outputs=out_mensaje_social)
 
-app.launch(theme=gr.themes.Soft())
+import os
+# Configuración del puerto para Render
+port = int(os.environ.get("PORT", 10000))
+app.launch(
+    server_name="0.0.0.0", server_port=port, theme=gr.themes.Soft(), share=False
+)
