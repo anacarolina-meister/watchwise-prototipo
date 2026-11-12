@@ -299,7 +299,7 @@ def wrapper_compatibilidad_simulada():
 with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
     gr.Markdown("# 🎬 WatchWise - Prototipo Sprint 4")
 
-    with gr.Tab("Base de Datos (Catálogo)"):
+    with gr.Tab("Catálogo"):
         gr.Markdown("Gestiona el catálogo de series en tiempo real.")
         with gr.Row():
             with gr.Column(scale=1):
@@ -333,7 +333,7 @@ with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
         btn_modificar.click(fn=wrapper_modificar, inputs=[in_busqueda, in_columna, in_nuevo_valor], outputs=[out_tabla_crud, out_mensaje_crud])
         btn_eliminar.click(fn=wrapper_eliminar, inputs=[in_busqueda], outputs=[out_tabla_crud, out_mensaje_crud])
 
-    with gr.Tab("Descubrir (Recomendaciones)"):
+    with gr.Tab("Recomendador"):
         gr.Markdown("Combina similitud de contenido (TF-IDF) y sentimiento (VADER).")
         with gr.Row():
             entrada_titulo = gr.Dropdown(choices=titulos_series, value=titulos_series[0] if titulos_series else None, label="Serie que te gustó")
