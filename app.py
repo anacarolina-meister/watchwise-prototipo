@@ -345,7 +345,11 @@ with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
                 btn_eliminar_val = gr.Button("Eliminar Valoración", variant="stop")
                 
         out_mensaje_social = gr.Textbox(label="Respuesta del Sistema", interactive=False)
-        out_tabla_val = gr.Dataframe(label="Base de Datos de Valoraciones", value=consultar_valoraciones())
+        out_tabla_val = gr.Dataframe(
+    label="Base de Datos de Valoraciones", 
+    value=consultar_valoraciones(),
+    datatype="markdown"
+)
         
         btn_val_manual.click(fn=valorar_manual_ui, inputs=[social_usuario, social_titulo, social_decision, social_comentario], outputs=[out_mensaje_social, out_tabla_val])
         btn_val_auto.click(fn=valorar_auto_ui, inputs=[social_usuario, social_titulo, social_comentario], outputs=[out_mensaje_social, out_tabla_val])
