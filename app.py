@@ -213,14 +213,23 @@ def wrapper_añadir(t, g, d, v):
     return datos.tail(), msj
 
 def wrapper_consultar(entrada_busqueda, genero):
-    es_num = str(entrada_busqueda).strip().isdigit()
-    id_v = int(entrada_busqueda) if es_num else None
-    tit_v = None if es_num else entrada_busqueda
-    gen_v = genero if str(genero).strip() != "" else None
-    res = consultar_serie(datos, id_serie=id_v, titulo=tit_v, genero=gen_v)
-    if isinstance(res, str):
-        return pd.DataFrame(), res
-    return res, "Consulta realizada con éxito."
+  # Si no escribes nada en la búsqueda ni en el género, ¡devuelve todo el DataFrame completo!
+  if (
+      not entrada_busqueda
+      or str(entrada_busqueda).strip() == ""
+  ) and (not genero or str(genero).strip() == ""):
+    return datos, "Mostrando el catálogo completo."
+
+  es_numero = str(entrada_busqueda).strip().isdigit()
+  id_val = int(entrada_busqueda) if es_numero else None
+  titulo_val = None if es_numero else entrada_busqueda
+  genero_val = genero if str(genero).strip() != "" else None
+  resultado = consultar_serie(
+      datos, id_serie=id_val, titulo=titulo_val, genero=genero_val
+  )
+  if isinstance(resultado, str):
+    return pd.DataFrame(), resultado
+  return resultado, "Consulta realizada con éxito."
 
 def wrapper_modificar(entrada_busqueda, col, val):
     global datos
