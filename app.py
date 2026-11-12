@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 WatchWise - Prototipo Sprint 4
-Despliegue estable para Render con renderizado visual de pósters en Gradio
+Despliegue estable para Render con renderizado visual de pósters,
+CRUD completo y traducción automática para el SVM.
 """
 
 import os
@@ -15,6 +16,7 @@ from sklearn.metrics import pairwise_distances
 from sklearn import svm
 from sklearn.model_selection import train_test_split
 import gradio as gr
+from deep_translator import GoogleTranslator
 
 # Descarga de recursos NLTK requeridos
 nltk.download("vader_lexicon", quiet=True)
@@ -193,8 +195,14 @@ def eliminar_valoracion(id_val):
     df_valoraciones = df_valoraciones[df_valoraciones["id_val"] != id_val].reset_index(drop=True)
     return df_valoraciones, f"Éxito: Valoración con ID {id_val} eliminada."
 
+# TRADUCCIÓN ANTES DEL SVM
 def valoracion_automatica(comentario):
-    vector = vectorizador_svm.transform([str(comentario).lower().strip()])
+    texto = str(comentario).strip()
+    try:
+        texto_en = GoogleTranslator(source='auto', target='en').translate(texto)
+    except Exception:
+        texto_en = texto
+    vector = vectorizador_svm.transform([texto_en.lower().strip()])
     return int(modelo_svm.predict(vector)[0])
 
 # 5. WRAPPERS E INTERFAZ GRADIO
@@ -282,6 +290,12 @@ def eliminar_val_ui(id_v):
     tabla, msj = eliminar_valoracion(int(id_v))
     return msj, tabla
 
+def wrapper_wishlist_simulada(titulo):
+    return f"(simulado) '{titulo}' se ha añadido a tu Wishlist correctamente."
+
+def wrapper_compatibilidad_simulada():
+    return "(simulado) Calculando afinidad con tus seguidores... ¡Tenéis un 85% de compatibilidad!"
+
 with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
     gr.Markdown("# 🎬 WatchWise - Prototipo Sprint 4")
 
@@ -333,14 +347,14 @@ with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
         boton_recomendar.click(fn=recomendar_ui, inputs=[entrada_titulo, entrada_alpha, entrada_n], outputs=salida_tabla)
 
     with gr.Tab("Valorar y Social"):
-        gr.Markdown("Subsistema de Valoración **[Manual CRUD + Automática SVM]**.")
+        gr.Markdown("Subsistema de Valoración de Ítems **[Nivel Real: Manual CRUD + Automática SVM]** y Funciones Sociales **[Nivel Simulado]**.")
         with gr.Row():
             with gr.Column(scale=1):
                 gr.Markdown("### Valorar Serie")
                 social_usuario = gr.Textbox(label="Usuario", value="Ana")
                 social_titulo = gr.Dropdown(choices=titulos_series, value=titulos_series[0] if titulos_series else None, label="Selecciona Serie")
                 social_decision = gr.Radio(choices=["Like", "No Like"], value="Like", label="Valoración Manual")
-                social_comentario = gr.Textbox(label="Reseña (en inglés para SVM)", lines=2, placeholder="Great plot and amazing characters!")
+                social_comentario = gr.Textbox(label="Reseña / Comentario (Español o Inglés)", lines=2, placeholder="Ej: ¡Me ha encantado la trama y los personajes son geniales!")
                 with gr.Row():
                     btn_val_manual = gr.Button("Guardar Valoración Manual", variant="primary")
                     btn_val_auto = gr.Button("Predecir Automática (SVM)")
@@ -350,6 +364,9 @@ with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
                 btn_consultar_val = gr.Button("Actualizar Tabla")
                 id_borrar_val = gr.Number(label="ID de Valoración a eliminar", value=1, precision=0)
                 btn_eliminar_val = gr.Button("Eliminar Valoración", variant="stop")
+                with gr.Row():
+                    btn_wishlist = gr.Button("Añadir a Wishlist (simulado)")
+                    btn_compatibilidad = gr.Button("Calcular Compatibilidad (simulado)")
 
         out_mensaje_social = gr.Textbox(label="Respuesta del Sistema", interactive=False)
         out_tabla_val = gr.Dataframe(
@@ -361,6 +378,8 @@ with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
         btn_val_auto.click(fn=valorar_auto_ui, inputs=[social_usuario, social_titulo, social_comentario], outputs=[out_mensaje_social, out_tabla_val])
         btn_consultar_val.click(fn=filtrar_val_ui, inputs=[filtro_usr], outputs=out_tabla_val)
         btn_eliminar_val.click(fn=eliminar_val_ui, inputs=[id_borrar_val], outputs=[out_mensaje_social, out_tabla_val])
+        btn_wishlist.click(fn=wrapper_wishlist_simulada, inputs=[social_titulo], outputs=out_mensaje_social)
+        btn_compatibilidad.click(fn=wrapper_compatibilidad_simulada, inputs=[], outputs=out_mensaje_social)
 
 port = int(os.environ.get("PORT", 10000))
 app.launch(server_name="0.0.0.0", server_port=port, theme=gr.themes.Soft(), share=False)
