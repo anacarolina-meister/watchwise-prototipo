@@ -213,7 +213,6 @@ def wrapper_añadir(t, g, d, v):
     return datos.tail(), msj
 
 def wrapper_consultar(entrada_busqueda, genero):
-  # Si no escribes nada en la búsqueda ni en el género, ¡devuelve todo el DataFrame completo!
   if (
       not entrada_busqueda
       or str(entrada_busqueda).strip() == ""
@@ -346,10 +345,9 @@ with gr.Blocks(title="WatchWise - Prototipo Sprint 4") as app:
                 
         out_mensaje_social = gr.Textbox(label="Respuesta del Sistema", interactive=False)
         out_tabla_val = gr.Dataframe(
-    label="Base de Datos de Valoraciones", 
-    value=consultar_valoraciones(),
-    datatype="markdown"
-)
+            label="Base de Datos de Valoraciones", 
+            value=consultar_valoraciones()
+        )
         
         btn_val_manual.click(fn=valorar_manual_ui, inputs=[social_usuario, social_titulo, social_decision, social_comentario], outputs=[out_mensaje_social, out_tabla_val])
         btn_val_auto.click(fn=valorar_auto_ui, inputs=[social_usuario, social_titulo, social_comentario], outputs=[out_mensaje_social, out_tabla_val])
